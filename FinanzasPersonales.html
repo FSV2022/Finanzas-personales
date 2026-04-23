@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanzas Personales</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'JetBrains Mono','Courier New',monospace; background:#0a0d14; color:#e2e8f0; min-height:100vh; }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:#0a0d14; }
+    ::-webkit-scrollbar-thumb { background:#1e2433; border-radius:3px; }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.5); }
+    input::placeholder { color:#374151; }
+    input:focus { outline:none; border-color:#374151 !important; }
+
+    /* Header */
+    #header { position:sticky; top:0; z-index:50; background:#0a0d14; border-bottom:1px solid #1e2433; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    #header h1 { font-family:'DM Serif Display',serif; font-size:20px; color:#fff; font-weight:normal; }
+    #header .subtitle { font-size:11px; color:#475569; margin-top:3px; }
+    .btn-group { display:flex; gap:8px; flex-wrap:wrap; flex-shrink:0; }
+
+    /* Buttons */
+    .btn { border:none; border-radius:10px; padding:9px 18px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; transition:opacity .15s; }
+    .btn:hover { opacity:.85; }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-green  { background:#10b981; color:#fff; }
+    .btn-red    { background:#ef4444; color:#fff; }
+    .btn-gray   { background:#1e2433; color:#94a3b8; }
+    .btn-amber  { background:#f59e0b; color:#000; }
+    .btn-orange { background:#f97316; color:#fff; }
+    .btn-ghost  { background:transparent; border:1px solid #1e2433; border-radius:6px; padding:4px 10px; color:#475569; font-size:11px; cursor:pointer; font-family:inherit; margin-top:10px; }
+    .btn-ghost:hover { color:#94a3b8; border-color:#374151; }
+    .btn-icon { background:transparent; border:none; cursor:pointer; font-size:16px; padding:4px 6px; border-radius:4px; transition:opacity .15s; line-height:1; flex-shrink:0; }
+    .btn-icon:hover { opacity:.6; }
+
+    /* Status bar */
+    #status-bar { font-size:11px; padding:6px 24px; text-align:center; display:none; }
+    #status-bar.loading { display:block; background:#1e2433; color:#64748b; }
+    #status-bar.error   { display:block; background:#450a0a; color:#ef4444; }
+    #status-bar.ok      { display:block; background:#052e16; color:#10b981; }
+
+    /* Setup screen */
+    #setup-screen { display:none; max-width:560px; margin:60px auto; padding:32px; background:#111827; border-radius:20px; border:1px solid #1e2433; }
+    #setup-screen h2 { font-family:'DM Serif Display',serif; font-size:24px; font-weight:normal; margin-bottom:8px; color:#fff; }
+    #setup-screen p  { font-size:12px; color:#64748b; margin-bottom:20px; line-height:1.7; }
+    #setup-screen ol { font-size:12px; color:#94a3b8; padding-left:18px; line-height:2; margin-bottom:20px; }
+    #setup-screen code { background:#1e2433; padding:2px 6px; border-radius:4px; color:#f59e0b; font-family:inherit; font-size:11px; }
+    #url-input { width:100%; background:#0a0d14; border:1px solid #1e2433; border-radius:10px; padding:12px; color:#fff; font-family:inherit; font-size:12px; margin-bottom:12px; }
+
+    /* Layout */
+    #main { padding:24px; max-width:860px; margin:0 auto; display:none; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+    .card { background:#111827; border-radius:16px; padding:20px; border:1px solid #1e2433; }
+    .card-label { font-size:10px; color:#64748b; letter-spacing:1.5px; display:block; margin-bottom:10px; }
+    .big-num { font-family:'DM Serif Display',serif; font-size:30px; line-height:1; }
+    .progress-track { background:#1e2433; border-radius:4px; height:6px; overflow:hidden; margin-top:12px; }
+    .progress-fill { height:100%; border-radius:4px; transition:width .6s ease; }
+    .goal-edit { display:flex; gap:8px; align-items:center; }
+    .goal-input { width:140px; background:#1e2433; border:1px solid #374151; border-radius:8px; padding:8px 10px; color:#fff; font-family:inherit; font-size:16px; }
+    .goal-input:focus { outline:none; border-color:#f59e0b; }
+
+    /* Chart */
+    #chart-card { margin-bottom:20px; display:none; }
+    #chart-container { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+    #pie-wrap { width:160px; height:160px; flex-shrink:0; }
+    #chart-legend { flex:1; display:flex; flex-direction:column; gap:8px; min-width:160px; }
+
+    /* Pending */
+    #pending-card { margin-bottom:20px; }
+    .pending-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .pending-summary { display:flex; gap:20px; margin-bottom:14px; padding:12px 14px; background:#0f1520; border-radius:10px; flex-wrap:wrap; }
+    .pending-item { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-radius:12px; gap:12px; margin-bottom:8px; border-left:3px solid transparent; }
+    .pending-item.overdue  { background:#1a0f0f; border-left-color:#ef4444; }
+    .pending-item.thisweek { background:#1a1408; border-left-color:#f97316; }
+    .pending-item.nextweek { background:#15130a; border-left-color:#f59e0b; }
+    .pending-item.later    { background:#0f1520; border-left-color:#374151; }
+    .pending-badge { font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; letter-spacing:.5px; flex-shrink:0; }
+    .badge-overdue  { background:#450a0a; color:#ef4444; }
+    .badge-thisweek { background:#431407; color:#f97316; }
+    .badge-nextweek { background:#422006; color:#f59e0b; }
+    .badge-later    { background:#1e2433; color:#64748b; }
+    .pending-empty  { text-align:center; padding:24px 0; color:#374151; font-size:12px; }
+
+    /* Transactions */
+    .tx-item { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:#0f1520; border-radius:12px; gap:12px; margin-bottom:8px; }
+    .tx-icon { width:38px; height:38px; border-radius:10px; background:#1e2433; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .tx-name { font-size:13px; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tx-sub  { font-size:11px; color:#475569; }
+    .tx-amount { font-family:'DM Serif Display',serif; font-size:16px; flex-shrink:0; }
+    .tx-del { background:transparent; border:none; color:#374151; cursor:pointer; font-size:20px; padding:2px 6px; line-height:1; border-radius:4px; flex-shrink:0; transition:color .15s; }
+    .tx-del:hover { color:#ef4444; }
+    .empty-state { text-align:center; padding:48px 0; color:#374151; font-size:13px; line-height:1.8; }
+
+    /* Modals */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:100; padding:20px; }
+    .modal-box { background:#111827; border-radius:20px; padding:28px; width:100%; max-width:420px; border:1px solid #1e2433; max-height:90vh; overflow-y:auto; }
+    .modal-box h2 { font-family:'DM Serif Display',serif; font-size:22px; font-weight:normal; margin-bottom:22px; }
+    .form-group { margin-bottom:16px; }
+    .form-group label { font-size:10px; color:#64748b; letter-spacing:1.5px; display:block; margin-bottom:6px; }
+    .form-input { width:100%; background:#0a0d14; border:1px solid #1e2433; border-radius:10px; padding:12px; color:#fff; font-family:inherit; font-size:14px; }
+    #amount-input { font-size:22px; }
+    .cat-grid { display:flex; flex-wrap:wrap; gap:7px; }
+    .cat-btn { border:none; border-radius:8px; padding:7px 12px; cursor:pointer; font-size:12px; font-family:inherit; transition:all .15s; }
+    .modal-actions { display:flex; gap:10px; margin-top:20px; }
+
+    @media (max-width:560px) {
+      .grid-2 { grid-template-columns:1fr; }
+      #header { flex-direction:column; align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div>
+    <h1>Finanzas Personales</h1>
+    <div class="subtitle" id="month-label"></div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-green"  id="btn-ingreso" onclick="openModal('ingreso')">+ Ingreso</button>
+    <button class="btn btn-red"    id="btn-gasto"   onclick="openModal('gasto')">+ Gasto</button>
+    <button class="btn btn-orange" id="btn-pending" onclick="openPendingModal()">+ Pendiente</button>
+  </div>
+</div>
+
+<!-- Status bar -->
+<div id="status-bar"></div>
+
+<!-- Setup screen -->
+<div id="setup-screen">
+  <h2>Configuración inicial</h2>
+  <p>Para que la app funcione en todos tus dispositivos, necesitás conectarla con tu Google Sheet.</p>
+  <ol>
+    <li>En el editor de Apps Script, ejecutá la función <code>setup()</code> una vez</li>
+    <li>Hacé clic en <strong>Implementar → Nueva implementación</strong></li>
+    <li>Tipo: <strong>Aplicación web</strong></li>
+    <li>Ejecutar como: <strong>Yo</strong></li>
+    <li>Quién tiene acceso: <strong>Cualquier persona</strong></li>
+    <li>Copiá la URL que te da Google y pegala abajo</li>
+  </ol>
+  <input type="text" id="url-input" placeholder="https://script.google.com/macros/s/..." />
+  <button class="btn btn-green" style="width:100%" onclick="guardarURL()">Conectar y comenzar</button>
+</div>
+
+<!-- Main dashboard -->
+<div id="main">
+  <div class="grid-2" id="kpi-grid"></div>
+
+  <div class="card" id="pending-card">
+    <div class="pending-header">
+      <span class="card-label" style="margin-bottom:0;">⏰ PAGOS PENDIENTES</span>
+      <button class="btn btn-orange" style="padding:6px 14px;font-size:12px;" onclick="openPendingModal()">+ Agregar</button>
+    </div>
+    <div id="pending-summary"></div>
+    <div id="pending-list"></div>
+  </div>
+
+  <div class="card" id="chart-card">
+    <span class="card-label" id="chart-title"></span>
+    <div id="chart-container">
+      <div id="pie-wrap"><canvas id="pie-chart"></canvas></div>
+      <div id="chart-legend"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="card-label">MOVIMIENTOS RECIENTES</span>
+    <div id="tx-list"></div>
+  </div>
+</div>
+
+<!-- Modal ingreso/gasto -->
+<div id="modal-overlay" class="modal-overlay" onclick="overlayClick(event,'modal-overlay')">
+  <div class="modal-box">
+    <h2 id="modal-title"></h2>
+    <div class="form-group">
+      <label>MONTO (UYU)</label>
+      <input type="number" id="amount-input" class="form-input" placeholder="0" onkeydown="ifEnter(event)">
+    </div>
+    <div class="form-group">
+      <label>CATEGORÍA</label>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+    <div class="form-group">
+      <label>DESCRIPCIÓN (opcional)</label>
+      <input type="text" id="desc-input" class="form-input" placeholder="Ej: Tienda Inglesa, UTE..." onkeydown="ifEnter(event)">
+    </div>
+    <div class="form-group">
+      <label>FECHA</label>
+      <input type="date" id="date-input" class="form-input">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" style="flex:1" onclick="closeModal('modal-overlay')">Cancelar</button>
+      <button class="btn" id="save-btn" style="flex:2" onclick="addTx()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal pendiente -->
+<div id="pending-overlay" class="modal-overlay" onclick="overlayClick(event,'pending-overlay')">
+  <div class="modal-box">
+    <h2 style="color:#f97316;">Agregar pago pendiente</h2>
+    <div class="form-group">
+      <label>NOMBRE DEL PAGO</label>
+      <input type="text" id="p-name" class="form-input" placeholder="Ej: UTE, OSE, cuota tarjeta...">
+    </div>
+    <div class="form-group">
+      <label>MONTO ESTIMADO (UYU)</label>
+      <input type="number" id="p-amount" class="form-input" style="font-size:20px;" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label>FECHA DE VENCIMIENTO</label>
+      <input type="date" id="p-duedate" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>CATEGORÍA</label>
+      <div class="cat-grid" id="p-cat-grid"></div>
+    </div>
+    <div class="form-group">
+      <label>NOTA (opcional)</label>
+      <input type="text" id="p-note" class="form-input" placeholder="Cualquier aclaración...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" style="flex:1" onclick="closeModal('pending-overlay')">Cancelar</button>
+      <button class="btn btn-orange" style="flex:2" onclick="addPending()">Guardar pendiente</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Configuración ─────────────────────────────────────────────────────────────
+const SCRIPT_URL_KEY = 'finanzas_script_url';
+let SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || 'https://script.google.com/macros/s/AKfycbyfRI_drqajT85A0TdYyLZ4S7RyKhd4Y1lW85tl4iQzatTS-6XwCGuuQn7T-TKT2YH71w/exec';
+
+// ── Constantes ────────────────────────────────────────────────────────────────
+const EXPENSE_CATS = [
+  { id:'supermercado',    label:'Supermercado', icon:'🛒', color:'#f59e0b' },
+  { id:'servicios',       label:'Servicios',    icon:'⚡', color:'#3b82f6' },
+  { id:'alquiler',        label:'Alquiler',     icon:'🏠', color:'#84cc16' },
+  { id:'transporte',      label:'Transporte',   icon:'🚌', color:'#8b5cf6' },
+  { id:'salud',           label:'Salud',        icon:'💊', color:'#ec4899' },
+  { id:'comida',          label:'Comida/Rest.', icon:'🍕', color:'#f97316' },
+  { id:'entretenimiento', label:'Entretenim.',  icon:'🎬', color:'#06b6d4' },
+  { id:'ropa',            label:'Ropa',         icon:'👕', color:'#14b8a6' },
+  { id:'otros',           label:'Otros',        icon:'📦', color:'#6b7280' },
+];
+const INCOME_CATS = [
+  { id:'multiventa', label:'MultiVenta UY', icon:'🏪', color:'#10b981' },
+  { id:'freelance',  label:'Freelance',     icon:'💻', color:'#22c55e' },
+  { id:'otros_ing',  label:'Otros',         icon:'💰', color:'#4ade80' },
+];
+
+// ── Estado ────────────────────────────────────────────────────────────────────
+let transactions  = [];
+let pendingItems  = [];
+let weeklyGoal    = 0;
+let modalType     = 'gasto';
+let selCat        = 'supermercado';
+let selPCat       = 'servicios';
+let editingGoal   = false;
+let chartInst     = null;
+let isBusy        = false;
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(payload) {
+  const url = payload
+    ? SCRIPT_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload))
+    : SCRIPT_URL;
+  const resp = await fetch(url, { redirect: 'follow' });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+function setStatus(msg, type) {
+  const bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.className = type || '';
+  if (type === 'ok') setTimeout(() => { bar.className = ''; }, 2500);
+}
+
+function setBusy(busy) {
+  isBusy = busy;
+  ['btn-ingreso','btn-gasto','btn-pending'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = busy;
+  });
+  setStatus(busy ? 'Guardando…' : '', busy ? 'loading' : '');
+}
+
+function applyData(data) {
+  transactions = (data.transactions || []).sort((a,b) => String(b.id).localeCompare(String(a.id)));
+  pendingItems = data.pendingItems || [];
+  weeklyGoal   = parseFloat(data.weeklyGoal) || 0;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  if (!SCRIPT_URL) {
+    document.getElementById('setup-screen').style.display = 'block';
+    return;
+  }
+  document.getElementById('main').style.display = 'block';
+  setStatus('Cargando datos…', 'loading');
+  try {
+    const data = await api();
+    applyData(data);
+    render();
+    setStatus('', '');
+  } catch(e) {
+    setStatus('Error al conectar con Google Sheets. Verificá la URL del script.', 'error');
+  }
+}
+
+function guardarURL() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    alert('La URL no parece válida. Asegurate de copiarla desde "Implementar → Administrar implementaciones".');
+    return;
+  }
+  localStorage.setItem(SCRIPT_URL_KEY, url);
+  SCRIPT_URL = url;
+  document.getElementById('setup-screen').style.display = 'none';
+  init();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt   = n  => '$ ' + Math.abs(n).toLocaleString('es-UY', {maximumFractionDigits:0});
+const esc   = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const today = () => new Date().toISOString().split('T')[0];
+function weekStart()  { const d=new Date(); d.setDate(d.getDate()-d.getDay()); d.setHours(0,0,0,0); return d; }
+function monthStart() { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1); }
+function getCat(type,id) { return (type==='gasto'?EXPENSE_CATS:INCOME_CATS).find(c=>c.id===id)||{label:id,icon:'📋',color:'#6b7280'}; }
+function getEC(id)       { return EXPENSE_CATS.find(c=>c.id===id)||{label:id,icon:'📋',color:'#6b7280'}; }
+function monthName()     { const s=new Date().toLocaleDateString('es-UY',{month:'long',year:'numeric'}); return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function urgency(dueDate) {
+  const now=new Date(); now.setHours(0,0,0,0);
+  const due=new Date(dueDate+'T12:00:00');
+  const d=Math.round((due-now)/86400000);
+  if(d<0)  return {cls:'overdue',  badge:'badge-overdue',  label:'VENCIDO', days:d};
+  if(d===0)return {cls:'thisweek', badge:'badge-thisweek', label:'HOY',     days:d};
+  if(d<=7) return {cls:'thisweek', badge:'badge-thisweek', label:d+'d',     days:d};
+  if(d<=14)return {cls:'nextweek', badge:'badge-nextweek', label:d+'d',     days:d};
+  return        {cls:'later',    badge:'badge-later',    label:d+'d',     days:d};
+}
+
+// ── Compute ───────────────────────────────────────────────────────────────────
+function compute() {
+  const ws=weekStart(), ms=monthStart();
+  const wt=transactions.filter(t=>new Date(t.date+'T12:00:00')>=ws);
+  const mt=transactions.filter(t=>new Date(t.date+'T12:00:00')>=ms);
+  const wIn =wt.filter(t=>t.type==='ingreso').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const wEx =wt.filter(t=>t.type==='gasto').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const mIn =mt.filter(t=>t.type==='ingreso').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const mEx =mt.filter(t=>t.type==='gasto').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const cats=EXPENSE_CATS.map(c=>({...c,total:mt.filter(t=>t.type==='gasto'&&t.category===c.id).reduce((s,t)=>s+parseFloat(t.amount),0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  const pendingTotal  =pendingItems.reduce((s,p)=>s+parseFloat(p.amount||0),0);
+  const pendingUrgent =pendingItems.filter(p=>urgency(p.dueDate).days<=7).reduce((s,p)=>s+parseFloat(p.amount||0),0);
+  return { wIn,wEx,mIn,mEx,saldo:mIn-mEx, goalPct:weeklyGoal>0?Math.min((wIn/weeklyGoal)*100,100):0,
+           wInCnt:wt.filter(t=>t.type==='ingreso').length, cats, pendingTotal, pendingUrgent };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const {wIn,wEx,mIn,mEx,saldo,goalPct,wInCnt,cats,pendingTotal,pendingUrgent}=compute();
+  document.getElementById('month-label').textContent=monthName();
+
+  let goalHtml;
+  if(editingGoal){
+    goalHtml=`<div class="goal-edit"><input type="number" id="goal-field" class="goal-input" value="${weeklyGoal||''}" placeholder="Ej: 8000" onkeydown="if(event.key==='Enter')saveGoalClick()"><button class="btn btn-amber" onclick="saveGoalClick()">OK</button></div>`;
+  } else {
+    const falta=Math.max(0,pendingUrgent-wIn);
+    goalHtml=`
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <div class="big-num" style="color:#f59e0b;">${fmt(wIn)}</div>
+        ${weeklyGoal>0?`<div style="font-size:12px;color:#475569;">/ ${fmt(weeklyGoal)}</div>`:''}
+      </div>
+      ${weeklyGoal>0?`<div class="progress-track"><div class="progress-fill" style="background:${goalPct>=100?'#10b981':'#f59e0b'};width:${goalPct}%;"></div></div><div style="font-size:11px;color:#475569;margin-top:5px;">${Math.round(goalPct)}% de la meta ${goalPct>=100?'✅':''}</div>`:''}
+      ${pendingUrgent>0?`<div style="font-size:11px;margin-top:8px;padding:6px 10px;background:${falta>0?'#1a1408':'#0a1a0f'};border-radius:8px;border-left:3px solid ${falta>0?'#f97316':'#10b981'};color:${falta>0?'#f97316':'#10b981'};">${falta>0?`⚠️ Te faltan <strong>${fmt(falta)}</strong> para cubrir los urgentes`:`✅ Cubrís todos los pagos urgentes`}</div>`:''}
+      <button class="btn-ghost" onclick="startEditGoal()">${weeklyGoal>0?'Editar meta':'Fijar meta semanal'}</button>`;
+  }
+
+  const catRows=cats.length===0
+    ?'<div style="font-size:12px;color:#374151;padding-top:8px;">Sin gastos registrados este mes</div>'
+    :cats.slice(0,5).map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:12px;color:#94a3b8;">${c.icon} ${c.label}</span><span style="font-size:12px;color:${c.color};font-weight:600;">${fmt(c.total)}</span></div>`).join('');
+
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="card">
+      <span class="card-label">SALDO ESTIMADO — MES</span>
+      <div class="big-num" style="color:${saldo>=0?'#10b981':'#ef4444'};">${saldo<0?'−':''}${fmt(saldo)}</div>
+      <div style="font-size:11px;color:#475569;margin-top:10px;display:flex;gap:14px;"><span style="color:#10b981;">↑ ${fmt(mIn)}</span><span style="color:#ef4444;">↓ ${fmt(mEx)}</span></div>
+    </div>
+    <div class="card"><span class="card-label">META SEMANAL DE GENERACIÓN</span>${goalHtml}</div>
+    <div class="card">
+      <span class="card-label">INGRESOS ESTA SEMANA</span>
+      <div class="big-num" style="color:#10b981;">${fmt(wIn)}</div>
+      <div style="font-size:11px;color:#475569;margin-top:10px;">${wInCnt} registro(s) · Gastos: <span style="color:#ef4444;">${fmt(wEx)}</span></div>
+    </div>
+    <div class="card"><span class="card-label">GASTOS POR CATEGORÍA — MES</span>${catRows}</div>`;
+
+  if(editingGoal){ const gf=document.getElementById('goal-field'); if(gf){gf.focus();gf.select();} }
+
+  // Pendientes
+  const sorted=[...pendingItems].sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const urgentCount=pendingItems.filter(p=>urgency(p.dueDate).days<=7).length;
+  document.getElementById('pending-summary').innerHTML=pendingItems.length===0?'':
+    `<div class="pending-summary">
+      <div><div style="font-size:10px;color:#64748b;letter-spacing:1px;">TOTAL PENDIENTE</div><div style="font-family:'DM Serif Display',serif;font-size:22px;color:#f97316;margin-top:2px;">${fmt(pendingTotal)}</div></div>
+      <div><div style="font-size:10px;color:#64748b;letter-spacing:1px;">URGENTES (7 DÍAS)</div><div style="font-family:'DM Serif Display',serif;font-size:22px;color:${urgentCount>0?'#ef4444':'#475569'};margin-top:2px;">${urgentCount>0?fmt(pendingUrgent):'—'}</div></div>
+      <div><div style="font-size:10px;color:#64748b;letter-spacing:1px;">CANTIDAD</div><div style="font-family:'DM Serif Display',serif;font-size:22px;color:#94a3b8;margin-top:2px;">${pendingItems.length}</div></div>
+    </div>`;
+  document.getElementById('pending-list').innerHTML=sorted.length===0
+    ?'<div class="pending-empty">No hay pagos pendientes.</div>'
+    :sorted.map(p=>{
+      const u=urgency(p.dueDate), cat=getEC(p.category||'otros');
+      const due=new Date(p.dueDate+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+      return `<div class="pending-item ${u.cls}">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+          <div class="tx-icon">${cat.icon}</div>
+          <div style="min-width:0;"><div class="tx-name">${esc(p.name)}</div><div class="tx-sub">Vence: ${due}${p.note?' · '+esc(p.note):''}</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span class="pending-badge ${u.badge}">${u.label}</span>
+          <div class="tx-amount" style="color:#f97316;">${p.amount?fmt(p.amount):'—'}</div>
+          <button class="btn-icon" title="Marcar como pagado" onclick="payPending('${p.id}')" style="color:#10b981;font-size:18px;">✅</button>
+          <button class="btn-icon" title="Eliminar" onclick="delPending('${p.id}')" style="color:#374151;font-size:20px;">×</button>
+        </div>
+      </div>`;
+    }).join('');
+
+  // Chart
+  const cc=document.getElementById('chart-card');
+  if(cats.length===0){ cc.style.display='none'; if(chartInst){chartInst.destroy();chartInst=null;} }
+  else {
+    cc.style.display='block';
+    document.getElementById('chart-title').textContent='DISTRIBUCIÓN DE GASTOS — '+monthName().toUpperCase();
+    document.getElementById('chart-legend').innerHTML=cats.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;align-items:center;gap:8px;"><div style="width:9px;height:9px;border-radius:50%;background:${c.color};flex-shrink:0;"></div><span style="font-size:12px;color:#94a3b8;">${c.icon} ${c.label}</span></div><span style="font-size:12px;color:#e2e8f0;">${fmt(c.total)}</span></div>`).join('');
+    if(chartInst){chartInst.destroy();chartInst=null;}
+    chartInst=new Chart(document.getElementById('pie-chart'),{type:'doughnut',data:{labels:cats.map(c=>c.label),datasets:[{data:cats.map(c=>c.total),backgroundColor:cats.map(c=>c.color),borderWidth:0,hoverOffset:6}]},options:{cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)},backgroundColor:'#111827',borderColor:'#1e2433',borderWidth:1,bodyFont:{family:'JetBrains Mono'},titleFont:{family:'JetBrains Mono'}}}}});
+  }
+
+  // Transacciones
+  const txEl=document.getElementById('tx-list');
+  if(transactions.length===0){ txEl.innerHTML='<div class="empty-state">Todavía no hay movimientos.<br><span style="color:#64748b;">Usá los botones de arriba para empezar.</span></div>'; return; }
+  txEl.innerHTML=transactions.slice(0,50).map(tx=>{
+    const cat=getCat(tx.type,tx.category);
+    const d=new Date(tx.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short'});
+    return `<div class="tx-item">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+        <div class="tx-icon">${cat.icon}</div>
+        <div style="min-width:0;"><div class="tx-name">${esc(tx.description||cat.label)}</div><div class="tx-sub">${cat.label} · ${d}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <div class="tx-amount" style="color:${tx.type==='ingreso'?'#10b981':'#ef4444'};">${tx.type==='ingreso'?'+':'−'}${fmt(tx.amount)}</div>
+        <button class="tx-del" onclick="delTx('${tx.id}')" title="Eliminar">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Modales ───────────────────────────────────────────────────────────────────
+function openModal(type){
+  modalType=type; selCat=type==='gasto'?'supermercado':'multiventa';
+  const isInc=type==='ingreso';
+  document.getElementById('modal-title').textContent=isInc?'Registrar ingreso':'Registrar gasto';
+  document.getElementById('modal-title').style.color=isInc?'#10b981':'#ef4444';
+  document.getElementById('save-btn').textContent='Guardar '+type;
+  document.getElementById('save-btn').style.background=isInc?'#10b981':'#ef4444';
+  document.getElementById('save-btn').style.color='#fff';
+  document.getElementById('amount-input').value='';
+  document.getElementById('desc-input').value='';
+  document.getElementById('date-input').value=today();
+  const cats=isInc?INCOME_CATS:EXPENSE_CATS;
+  document.getElementById('cat-grid').innerHTML=cats.map(c=>`<button class="cat-btn" id="cb_${c.id}" style="background:${c.id===selCat?c.color:'#1e2433'};color:${c.id===selCat?'#000':'#94a3b8'};" onclick="pickCat('${c.id}')">${c.icon} ${c.label}</button>`).join('');
+  document.getElementById('modal-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('amount-input').focus(),60);
+}
+
+function openPendingModal(){
+  selPCat='servicios';
+  document.getElementById('p-name').value='';
+  document.getElementById('p-amount').value='';
+  document.getElementById('p-note').value='';
+  const d=new Date(); d.setDate(d.getDate()+7);
+  document.getElementById('p-duedate').value=d.toISOString().split('T')[0];
+  document.getElementById('p-cat-grid').innerHTML=EXPENSE_CATS.map(c=>`<button class="cat-btn" id="pc_${c.id}" style="background:${c.id===selPCat?c.color:'#1e2433'};color:${c.id===selPCat?'#000':'#94a3b8'};" onclick="pickPCat('${c.id}')">${c.icon} ${c.label}</button>`).join('');
+  document.getElementById('pending-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('p-name').focus(),60);
+}
+
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+function overlayClick(e,id){ if(e.target===document.getElementById(id)) closeModal(id); }
+function pickCat(id){ selCat=id; (modalType==='gasto'?EXPENSE_CATS:INCOME_CATS).forEach(c=>{ const el=document.getElementById('cb_'+c.id); if(!el)return; el.style.background=c.id===id?c.color:'#1e2433'; el.style.color=c.id===id?'#000':'#94a3b8'; }); }
+function pickPCat(id){ selPCat=id; EXPENSE_CATS.forEach(c=>{ const el=document.getElementById('pc_'+c.id); if(!el)return; el.style.background=c.id===id?c.color:'#1e2433'; el.style.color=c.id===id?'#000':'#94a3b8'; }); }
+function ifEnter(e){ if(e.key==='Enter') addTx(); }
+
+// ── Acciones ──────────────────────────────────────────────────────────────────
+async function addTx(){
+  const amount=parseFloat(document.getElementById('amount-input').value);
+  const desc=document.getElementById('desc-input').value.trim();
+  const date=document.getElementById('date-input').value;
+  if(!amount||!selCat||isBusy) return;
+  closeModal('modal-overlay');
+  setBusy(true);
+  try {
+    const tx={id:Date.now(),type:modalType,amount,category:selCat,description:desc,date};
+    const data=await api({action:'addTx',tx});
+    applyData(data); render();
+    setStatus('✓ Guardado', 'ok');
+  } catch(e){ setStatus('Error al guardar. Intentá de nuevo.','error'); }
+  setBusy(false);
+}
+
+async function delTx(id){
+  if(!confirm('¿Eliminar este movimiento?')||isBusy) return;
+  setBusy(true);
+  try { const data=await api({action:'delTx',id}); applyData(data); render(); setStatus('✓ Eliminado','ok'); }
+  catch(e){ setStatus('Error al eliminar.','error'); }
+  setBusy(false);
+}
+
+async function addPending(){
+  const name=document.getElementById('p-name').value.trim();
+  const amount=parseFloat(document.getElementById('p-amount').value)||0;
+  const dueDate=document.getElementById('p-duedate').value;
+  const note=document.getElementById('p-note').value.trim();
+  if(!name||!dueDate||isBusy) return;
+  closeModal('pending-overlay');
+  setBusy(true);
+  try {
+    const item={id:Date.now(),name,amount,dueDate,category:selPCat,note};
+    const data=await api({action:'addPending',item});
+    applyData(data); render(); setStatus('✓ Pendiente guardado','ok');
+  } catch(e){ setStatus('Error al guardar.','error'); }
+  setBusy(false);
+}
+
+async function delPending(id){
+  if(!confirm('¿Eliminar este pendiente?')||isBusy) return;
+  setBusy(true);
+  try { const data=await api({action:'delPending',id}); applyData(data); render(); setStatus('✓ Eliminado','ok'); }
+  catch(e){ setStatus('Error al eliminar.','error'); }
+  setBusy(false);
+}
+
+async function payPending(id){
+  const p=pendingItems.find(x=>String(x.id)===String(id)); if(!p||isBusy) return;
+  const msg=p.amount>0?`¿Marcar "${p.name}" como pagado y registrarlo como gasto de ${fmt(p.amount)}?`:`¿Marcar "${p.name}" como pagado?`;
+  if(!confirm(msg)) return;
+  setBusy(true);
+  try {
+    const tx=p.amount>0?{id:Date.now(),type:'gasto',amount:p.amount,category:p.category||'otros',description:p.name+(p.note?' — '+p.note:''),date:today()}:null;
+    const data=await api({action:'payPending',id,tx});
+    applyData(data); render(); setStatus('✓ Pagado y registrado','ok');
+  } catch(e){ setStatus('Error al procesar.','error'); }
+  setBusy(false);
+}
+
+async function saveGoalClick(){
+  const el=document.getElementById('goal-field');
+  const val=parseFloat(el?el.value:0)||0;
+  editingGoal=false;
+  if(isBusy) return;
+  setBusy(true);
+  try { const data=await api({action:'setGoal',value:val}); applyData(data); render(); setStatus('✓ Meta guardada','ok'); }
+  catch(e){ weeklyGoal=val; render(); setStatus('Error al guardar meta.','error'); }
+  setBusy(false);
+}
+
+function startEditGoal(){ editingGoal=true; render(); }
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal('modal-overlay'); closeModal('pending-overlay'); } });
+
+// ── Arrancar ──────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
